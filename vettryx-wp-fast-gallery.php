@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -14,19 +14,95 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-
+// Classe principal do plugin
 class Vettryx_Fast_Gallery {
 
     public function __construct() {
+        // Inicialização do CPT e Taxonomia
         add_action('init', [$this, 'register_cpt']);
+        add_action('init', [$this, 'register_taxonomies']);
+        
+        // Meta Boxes e Salvamento
         add_action('add_meta_boxes', [$this, 'add_custom_meta_boxes']);
         add_action('save_post', [$this, 'save_gallery_data']);
+        
+        // Scripts de Mídia
         add_action('admin_enqueue_scripts', [$this, 'enqueue_media_uploader']);
         add_action('admin_footer', [$this, 'gallery_javascript']);
+
+        // Menu de Configurações (Slugs Dinâmicos)
+        add_action('admin_menu', [$this, 'add_settings_menu']);
+        add_action('admin_init', [$this, 'register_settings']);
     }
 
-    // 1. REGISTRA O TIPO DE POST "ÁLBUNS"
+    // ==========================================
+    // 1. CONFIGURAÇÕES E SLUGS DINÂMICOS
+    // ==========================================
+    
+    public function add_settings_menu() {
+        add_submenu_page(
+            'edit.php?post_type=vtx_gallery', // Coloca abaixo do menu "Meus Trabalhos"
+            'Configurações da Galeria',
+            'Configurações',
+            'manage_options', // Apenas administradores podem mudar o slug
+            'vtx-gallery-settings',
+            [$this, 'render_settings_page']
+        );
+    }
+
+    public function register_settings() {
+        // Registra as opções no banco de dados com sanitização para URLs (slugs)
+        register_setting('vtx_gallery_settings_group', 'vtx_gallery_cpt_slug', 'sanitize_title');
+        register_setting('vtx_gallery_settings_group', 'vtx_gallery_tax_slug', 'sanitize_title');
+    }
+
+    public function render_settings_page() {
+        $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
+        $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
+        ?>
+        <div class="wrap">
+            <h1>Configurações da Galeria (VETTRYX)</h1>
+            <p>Personalize os links (slugs) de como os trabalhos aparecerão na URL do site.</p>
+            
+            <div class="notice notice-warning inline">
+                <p><strong>Atenção:</strong> Sempre que você alterar e salvar novos slugs aqui, lembre-se de ir em <strong>Configurações > Links Permanentes</strong> e clicar em "Salvar Alterações" para o WordPress reconhecer as novas URLs e evitar o Erro 404.</p>
+            </div>
+
+            <form method="post" action="options.php">
+                <?php settings_fields('vtx_gallery_settings_group'); ?>
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row">Slug Principal dos Trabalhos<br><small>(Ex: servicos, projetos, obras)</small></th>
+                        <td>
+                            <code><?php echo home_url('/'); ?></code>
+                            <input type="text" name="vtx_gallery_cpt_slug" value="<?php echo esc_attr($cpt_slug); ?>" placeholder="servicos" />
+                            <code>/nome-do-trabalho/</code>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Slug das Categorias<br><small>(Ex: tipo-servico, categoria-projeto)</small></th>
+                        <td>
+                            <code><?php echo home_url('/'); ?></code>
+                            <input type="text" name="vtx_gallery_tax_slug" value="<?php echo esc_attr($tax_slug); ?>" placeholder="tipo-servico" />
+                            <code>/nome-da-categoria/</code>
+                        </td>
+                    </tr>
+                </table>
+                <?php submit_button('Salvar Slugs'); ?>
+            </form>
+        </div>
+        <?php
+    }
+
+    // ==========================================
+    // 2. REGISTRO DE CPT E TAXONOMIA
+    // ==========================================
+
     public function register_cpt() {
+        // Puxa o slug dinâmico do banco (ou usa 'servicos' como fallback)
+        $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
+        if(empty($cpt_slug)) $cpt_slug = 'servicos';
+
         $labels = [
             'name'               => 'Meus Trabalhos',
             'singular_name'      => 'Trabalho/Álbum',
@@ -50,12 +126,48 @@ class Vettryx_Fast_Gallery {
             'menu_position'      => 5,
             'supports'           => ['title'], 
             'show_in_rest'       => false,
+            'rewrite'            => ['slug' => $cpt_slug, 'with_front' => false],
         ];
 
         register_post_type('vtx_gallery', $args);
     }
 
-    // 2. CRIA AS CAIXAS DE CAMPOS (META BOXES)
+    public function register_taxonomies() {
+        // Puxa o slug dinâmico do banco (ou usa 'tipo-servico' como fallback)
+        $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
+        if(empty($tax_slug)) $tax_slug = 'tipo-servico';
+
+        $labels = [
+            'name'              => 'Tipos de Serviço',
+            'singular_name'     => 'Tipo de Serviço',
+            'search_items'      => 'Buscar Tipos',
+            'all_items'         => 'Todos os Tipos',
+            'parent_item'       => 'Tipo Pai',
+            'parent_item_colon' => 'Tipo Pai:',
+            'edit_item'         => 'Editar Tipo',
+            'update_item'       => 'Atualizar Tipo',
+            'add_new_item'      => 'Adicionar Novo Tipo',
+            'new_item_name'     => 'Novo Nome',
+            'menu_name'         => 'Tipos de Serviço',
+        ];
+
+        $args = [
+            'hierarchical'      => true,
+            'labels'            => $labels,
+            'show_ui'           => true,
+            'show_admin_column' => true,
+            'query_var'         => true,
+            'rewrite'           => ['slug' => $tax_slug],
+            'show_in_rest'      => false,
+        ];
+
+        register_taxonomy('vtx_service_category', ['vtx_gallery'], $args);
+    }
+
+    // ==========================================
+    // 3. META BOXES DE DADOS E FOTOS
+    // ==========================================
+
     public function add_custom_meta_boxes() {
         add_meta_box('vtx_gallery_info', 'Informações do Serviço', [$this, 'render_info_box'], 'vtx_gallery', 'normal', 'high');
         add_meta_box('vtx_gallery_media', 'Galeria: Antes e Depois', [$this, 'render_media_box'], 'vtx_gallery', 'normal', 'high');
@@ -70,7 +182,6 @@ class Vettryx_Fast_Gallery {
         $month = get_post_meta($post->ID, 'vtx_service_month', true);
         $year = get_post_meta($post->ID, 'vtx_service_year', true);
 
-        // Ano atual para o dropdown
         $current_year = date('Y');
         ?>
         <div style="display: grid; gap: 15px;">
@@ -152,7 +263,6 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-    // Helper para desenhar as miniaturas salvas
     private function render_preview_images($ids_string) {
         if (empty($ids_string)) return;
         $ids = explode(',', $ids_string);
@@ -167,7 +277,6 @@ class Vettryx_Fast_Gallery {
         }
     }
 
-    // 3. CARREGA A BIBLIOTECA DE MÍDIA DO WP
     public function enqueue_media_uploader($hook) {
         global $post_type;
         if ($post_type == 'vtx_gallery') {
@@ -175,7 +284,6 @@ class Vettryx_Fast_Gallery {
         }
     }
 
-    // 4. JAVASCRIPT PARA GERENCIAR AS FOTOS (Múltiplas Fotos Flexíveis)
     public function gallery_javascript() {
         global $post_type;
         if ($post_type != 'vtx_gallery') return;
@@ -186,14 +294,14 @@ class Vettryx_Fast_Gallery {
 
             $('.vtx-upload-btn').click(function(e) {
                 e.preventDefault();
-                var target = $(this).data('target'); // 'before' ou 'after'
+                var target = $(this).data('target'); 
                 var inputField = $('#vtx_' + target + '_input');
                 var previewArea = $('#vtx_' + target + '_preview');
 
                 mediaUploader = wp.media({
                     title: 'Selecione as fotos',
                     button: { text: 'Usar estas fotos' },
-                    multiple: true // Permite selecionar várias fotos de uma vez!
+                    multiple: true 
                 });
 
                 mediaUploader.on('select', function() {
@@ -208,7 +316,6 @@ class Vettryx_Fast_Gallery {
                         var id = attachment.id;
                         var url = attachment.attributes.sizes && attachment.attributes.sizes.thumbnail ? attachment.attributes.sizes.thumbnail.url : attachment.attributes.url;
                         
-                        // Evita duplicatas
                         if($.inArray(id.toString(), currentIds) === -1) {
                             currentIds.push(id);
                             previewArea.append('<div class="vtx-img-wrap" data-id="'+id+'"><img src="'+url+'"><a href="#" class="vtx-remove-img" title="Remover">&times;</a></div>');
@@ -221,13 +328,12 @@ class Vettryx_Fast_Gallery {
                 mediaUploader.open();
             });
 
-            // Remover Imagem
             $(document).on('click', '.vtx-remove-img', function(e) {
                 e.preventDefault();
                 var wrap = $(this).closest('.vtx-img-wrap');
                 var idToRemove = wrap.data('id').toString();
                 var containerId = wrap.closest('.vtx-image-preview').attr('id');
-                var target = containerId.replace('vtx_', '').replace('_preview', ''); // 'before' ou 'after'
+                var target = containerId.replace('vtx_', '').replace('_preview', '');
                 var inputField = $('#vtx_' + target + '_input');
 
                 var currentIds = inputField.val().split(',');
@@ -243,13 +349,12 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-    // 5. SALVAR OS DADOS NO BANCO
+
     public function save_gallery_data($post_id) {
         if (!isset($_POST['vtx_gallery_nonce']) || !wp_verify_nonce($_POST['vtx_gallery_nonce'], 'vtx_gallery_save')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        // Salva os campos de texto
         $fields = ['vtx_service_location', 'vtx_service_desc', 'vtx_service_day', 'vtx_service_month', 'vtx_service_year', 'vtx_gallery_before', 'vtx_gallery_after'];
         
         foreach ($fields as $field) {
