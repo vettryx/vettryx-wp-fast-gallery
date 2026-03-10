@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.2.0
+ * Version:     1.2.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -93,6 +93,20 @@ class Vettryx_Fast_Gallery {
                 </table>
                 <?php submit_button('Salvar Slugs'); ?>
             </form>
+
+            <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ccd0d4;">
+
+            <div style="margin-top: 20px; background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-left: 4px solid var(--brand-primary, #023047); box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+                <h2 style="margin-top: 0;">Como exibir a Galeria no Site?</h2>
+                <p>Para exibir o álbum com o "Antes e Depois" no seu site, utilize o shortcode abaixo. Você pode colá-lo em um widget de <strong>Shortcode</strong> no seu modelo <em>Single Post</em> do Elementor.</p>
+                
+                <p>
+                    <input type="text" readonly value="[vtx_galeria_servico]" style="background: #f0f0f1; font-family: monospace; font-size: 16px; padding: 8px 12px; border: 1px solid #8c8f94; border-radius: 4px; width: 250px; text-align: center; color: #d63638; cursor: pointer;" onfocus="this.select();" title="Clique para copiar">
+                </p>
+                
+                <p class="description">O plugin irá puxar automaticamente o banco de dados e renderizar a descrição, data, local e o grid de fotos organizadas na tela do usuário final.</p>
+            </div>
+
         </div>
         <?php
     }
