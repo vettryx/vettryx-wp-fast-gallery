@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -33,6 +33,9 @@ class Vettryx_Fast_Gallery {
         // Menu de Configurações (Slugs Dinâmicos)
         add_action('admin_menu', [$this, 'add_settings_menu']);
         add_action('admin_init', [$this, 'register_settings']);
+
+        // Shortcode Front-end
+        add_shortcode('vtx_galeria_servico', [$this, 'render_frontend_gallery']);
     }
 
     // ==========================================
@@ -349,7 +352,6 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-
     public function save_gallery_data($post_id) {
         if (!isset($_POST['vtx_gallery_nonce']) || !wp_verify_nonce($_POST['vtx_gallery_nonce'], 'vtx_gallery_save')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -362,6 +364,79 @@ class Vettryx_Fast_Gallery {
                 update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
             }
         }
+    }
+
+    // ==========================================
+    // 4. FRONT-END (SHORTCODE PARA O ELEMENTOR)
+    // ==========================================
+
+    public function render_frontend_gallery() {
+        $post_id = get_the_ID();
+        if (get_post_type($post_id) !== 'vtx_gallery') return '';
+
+        $location = get_post_meta($post_id, 'vtx_service_location', true);
+        $desc = get_post_meta($post_id, 'vtx_service_desc', true);
+        $day = get_post_meta($post_id, 'vtx_service_day', true);
+        $month = get_post_meta($post_id, 'vtx_service_month', true);
+        $year = get_post_meta($post_id, 'vtx_service_year', true);
+        
+        $before_ids = get_post_meta($post_id, 'vtx_gallery_before', true);
+        $after_ids = get_post_meta($post_id, 'vtx_gallery_after', true);
+
+        // Monta a data
+        $data_formatada = '';
+        if ($year) {
+            $data_formatada = $day ? "$day de $month, $year" : ($month ? "$month, $year" : $year);
+        }
+
+        ob_start();
+        ?>
+        <div class="vtx-frontend-gallery-wrap">
+            
+            <?php if ($desc || $location || $data_formatada) : ?>
+            <div class="vtx-service-details" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <?php if ($desc) echo '<p style="font-size: 16px; margin-bottom: 10px;">' . nl2br(esc_html($desc)) . '</p>'; ?>
+                <div style="font-size: 14px; color: #666; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <?php if ($location) echo '<span>📍 ' . esc_html($location) . '</span>'; ?>
+                    <?php if ($data_formatada) echo '<span>📅 ' . esc_html($data_formatada) . '</span>'; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+                
+                <?php if (!empty($before_ids)) : ?>
+                <div class="vtx-gallery-col">
+                    <h3 style="border-bottom: 2px solid #d63638; padding-bottom: 10px; margin-bottom: 20px;">Antes</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
+                        <?php 
+                        foreach (explode(',', $before_ids) as $id) {
+                            $img_url = wp_get_attachment_image_url($id, 'large');
+                            if ($img_url) echo '<a href="'.esc_url($img_url).'" target="_blank"><img src="'.esc_url($img_url).'" style="width:100%; height:120px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></a>';
+                        }
+                        ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($after_ids)) : ?>
+                <div class="vtx-gallery-col">
+                    <h3 style="border-bottom: 2px solid #00a32a; padding-bottom: 10px; margin-bottom: 20px;">Depois</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
+                        <?php 
+                        foreach (explode(',', $after_ids) as $id) {
+                            $img_url = wp_get_attachment_image_url($id, 'large');
+                            if ($img_url) echo '<a href="'.esc_url($img_url).'" target="_blank"><img src="'.esc_url($img_url).'" style="width:100%; height:120px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></a>';
+                        }
+                        ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 }
 
