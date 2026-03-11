@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.2.1
+ * Version:     1.2.2
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -14,28 +14,35 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Classe principal do plugin
+/**
+ * Classe principal do plugin
+ */
 class Vettryx_Fast_Gallery {
 
     public function __construct() {
-        // Inicialização do CPT e Taxonomia
+        // 1. Registro do CPT e Taxonomia
         add_action('init', [$this, 'register_cpt']);
         add_action('init', [$this, 'register_taxonomies']);
         
-        // Meta Boxes e Salvamento
+        // 2. Meta Boxes e Salvamento
         add_action('add_meta_boxes', [$this, 'add_custom_meta_boxes']);
         add_action('save_post', [$this, 'save_gallery_data']);
         
-        // Scripts de Mídia
+        // 3. Enfileiramento de Scripts e JS do Uploader
         add_action('admin_enqueue_scripts', [$this, 'enqueue_media_uploader']);
         add_action('admin_footer', [$this, 'gallery_javascript']);
 
-        // Menu de Configurações (Slugs Dinâmicos)
+        // 4. Menu de Configurações
         add_action('admin_menu', [$this, 'add_settings_menu']);
         add_action('admin_init', [$this, 'register_settings']);
 
-        // Shortcode Front-end
-        add_shortcode('vtx_galeria_servico', [$this, 'render_frontend_gallery']);
+        // 5. Shortcodes Granulares (Para montagem manual no Elementor)
+        add_shortcode('vtx_fg_descricao', [$this, 'sc_get_desc']);
+        add_shortcode('vtx_fg_local', [$this, 'sc_get_location']);
+        add_shortcode('vtx_fg_data', [$this, 'sc_get_date']);
+        add_shortcode('vtx_fg_fotos_antes', [$this, 'sc_get_before_photos']);
+        add_shortcode('vtx_fg_fotos_depois', [$this, 'sc_get_after_photos']);
+        add_shortcode('vtx_fg_capa', [$this, 'sc_get_cover_image']);
     }
 
     // ==========================================
@@ -44,21 +51,26 @@ class Vettryx_Fast_Gallery {
     
     public function add_settings_menu() {
         add_submenu_page(
-            'edit.php?post_type=vtx_gallery', // Coloca abaixo do menu "Meus Trabalhos"
+            'edit.php?post_type=vtx_gallery',
             'Configurações da Galeria',
             'Configurações',
-            'manage_options', // Apenas administradores podem mudar o slug
+            'manage_options',
             'vtx-gallery-settings',
             [$this, 'render_settings_page']
         );
     }
 
+    /**
+     * Registra as configurações do plugin
+     */
     public function register_settings() {
-        // Registra as opções no banco de dados com sanitização para URLs (slugs)
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_cpt_slug', 'sanitize_title');
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_tax_slug', 'sanitize_title');
     }
 
+    /**
+     * Renderiza a página de configurações
+     */
     public function render_settings_page() {
         $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
@@ -68,7 +80,7 @@ class Vettryx_Fast_Gallery {
             <p>Personalize os links (slugs) de como os trabalhos aparecerão na URL do site.</p>
             
             <div class="notice notice-warning inline">
-                <p><strong>Atenção:</strong> Sempre que você alterar e salvar novos slugs aqui, lembre-se de ir em <strong>Configurações > Links Permanentes</strong> e clicar em "Salvar Alterações" para o WordPress reconhecer as novas URLs e evitar o Erro 404.</p>
+                <p><strong>Atenção:</strong> Sempre que alterar e salvar novos slugs, lembre-se de ir em <strong>Configurações > Links Permanentes</strong> e clicar em "Salvar Alterações".</p>
             </div>
 
             <form method="post" action="options.php">
@@ -97,14 +109,50 @@ class Vettryx_Fast_Gallery {
             <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ccd0d4;">
 
             <div style="margin-top: 20px; background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-left: 4px solid var(--brand-primary, #023047); box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-                <h2 style="margin-top: 0;">Como exibir a Galeria no Site?</h2>
-                <p>Para exibir o álbum com o "Antes e Depois" no seu site, utilize o shortcode abaixo. Você pode colá-lo em um widget de <strong>Shortcode</strong> no seu modelo <em>Single Post</em> do Elementor.</p>
-                
-                <p>
-                    <input type="text" readonly value="[vtx_galeria_servico]" style="background: #f0f0f1; font-family: monospace; font-size: 16px; padding: 8px 12px; border: 1px solid #8c8f94; border-radius: 4px; width: 250px; text-align: center; color: #d63638; cursor: pointer;" onfocus="this.select();" title="Clique para copiar">
-                </p>
-                
-                <p class="description">O plugin irá puxar automaticamente o banco de dados e renderizar a descrição, data, local e o grid de fotos organizadas na tela do usuário final.</p>
+                <h2 style="margin-top: 0;">Shortcodes para Montagem Manual (Elementor)</h2>
+                <p>Utilize os shortcodes abaixo para construir livremente o layout do seu <strong>Single Post Template</strong> ou do <strong>Loop Builder</strong>. Clique para copiar.</p>
+
+                <table class="wp-list-table widefat fixed striped" style="margin-top: 15px; width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Dado a Exibir</th>
+                            <th style="width: 35%;">Shortcode</th>
+                            <th>O que ele faz?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Descrição do Serviço</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_descricao]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Imprime o texto digitado na caixa de descrição.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Localização</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_local]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Imprime o texto do local (Ex: Condomínio XYZ).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Data Formatada</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_data]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Imprime a data (Ex: 18 de Fev, 2026).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Grade de Fotos: ANTES</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_fotos_antes]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Gera apenas o bloco de imagens da coluna "Antes".</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Grade de Fotos: DEPOIS</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_fotos_depois]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Gera apenas o bloco de imagens da coluna "Depois".</td>
+                        </tr>
+                        <tr>
+                            <td><strong>URL da Foto de Capa</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_capa]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Retorna o LINK puro da primeira foto do "Depois". Ideal para usar no Elementor como URL Dinâmica de fundo do <strong>Loop Builder</strong>.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
         </div>
@@ -116,7 +164,6 @@ class Vettryx_Fast_Gallery {
     // ==========================================
 
     public function register_cpt() {
-        // Puxa o slug dinâmico do banco (ou usa 'servicos' como fallback)
         $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
         if(empty($cpt_slug)) $cpt_slug = 'servicos';
 
@@ -149,8 +196,10 @@ class Vettryx_Fast_Gallery {
         register_post_type('vtx_gallery', $args);
     }
 
+    /**
+     * Registra a taxonomia
+     */
     public function register_taxonomies() {
-        // Puxa o slug dinâmico do banco (ou usa 'tipo-servico' como fallback)
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
         if(empty($tax_slug)) $tax_slug = 'tipo-servico';
 
@@ -185,11 +234,17 @@ class Vettryx_Fast_Gallery {
     // 3. META BOXES DE DADOS E FOTOS
     // ==========================================
 
+    /**
+     * Adiciona os meta boxes
+     */
     public function add_custom_meta_boxes() {
         add_meta_box('vtx_gallery_info', 'Informações do Serviço', [$this, 'render_info_box'], 'vtx_gallery', 'normal', 'high');
         add_meta_box('vtx_gallery_media', 'Galeria: Antes e Depois', [$this, 'render_media_box'], 'vtx_gallery', 'normal', 'high');
     }
 
+    /**
+     * Renderiza o meta box de informações
+     */
     public function render_info_box($post) {
         wp_nonce_field('vtx_gallery_save', 'vtx_gallery_nonce');
 
@@ -242,6 +297,9 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
+    /**
+     * Renderiza o meta box de mídia
+     */
     public function render_media_box($post) {
         $before_ids = get_post_meta($post->ID, 'vtx_gallery_before', true);
         $after_ids = get_post_meta($post->ID, 'vtx_gallery_after', true);
@@ -280,6 +338,9 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
+    /**
+     * Renderiza as imagens de preview
+     */
     private function render_preview_images($ids_string) {
         if (empty($ids_string)) return;
         $ids = explode(',', $ids_string);
@@ -294,6 +355,9 @@ class Vettryx_Fast_Gallery {
         }
     }
 
+    /**
+     * Enfileira os scripts e JS do uploader
+     */
     public function enqueue_media_uploader($hook) {
         global $post_type;
         if ($post_type == 'vtx_gallery') {
@@ -301,6 +365,9 @@ class Vettryx_Fast_Gallery {
         }
     }
 
+    /**
+     * JavaScript do uploader
+     */
     public function gallery_javascript() {
         global $post_type;
         if ($post_type != 'vtx_gallery') return;
@@ -366,6 +433,9 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
+    /**
+     * Salva os dados do meta box
+     */
     public function save_gallery_data($post_id) {
         if (!isset($_POST['vtx_gallery_nonce']) || !wp_verify_nonce($_POST['vtx_gallery_nonce'], 'vtx_gallery_save')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -381,76 +451,77 @@ class Vettryx_Fast_Gallery {
     }
 
     // ==========================================
-    // 4. FRONT-END (SHORTCODE PARA O ELEMENTOR)
+    // 4. FUNÇÕES DOS SHORTCODES GRANULARES
     // ==========================================
 
-    public function render_frontend_gallery() {
-        $post_id = get_the_ID();
-        if (get_post_type($post_id) !== 'vtx_gallery') return '';
+    /**
+     * Retorna a descrição do serviço
+     */
+    public function sc_get_desc() {
+        $desc = get_post_meta(get_the_ID(), 'vtx_service_desc', true);
+        return $desc ? nl2br(esc_html($desc)) : '';
+    }
 
-        $location = get_post_meta($post_id, 'vtx_service_location', true);
-        $desc = get_post_meta($post_id, 'vtx_service_desc', true);
-        $day = get_post_meta($post_id, 'vtx_service_day', true);
-        $month = get_post_meta($post_id, 'vtx_service_month', true);
-        $year = get_post_meta($post_id, 'vtx_service_year', true);
-        
-        $before_ids = get_post_meta($post_id, 'vtx_gallery_before', true);
-        $after_ids = get_post_meta($post_id, 'vtx_gallery_after', true);
+    /**
+     * Retorna a localização do serviço
+     */
+    public function sc_get_location() {
+        return esc_html(get_post_meta(get_the_ID(), 'vtx_service_location', true));
+    }
 
-        // Monta a data
-        $data_formatada = '';
-        if ($year) {
-            $data_formatada = $day ? "$day de $month, $year" : ($month ? "$month, $year" : $year);
+    /**
+     * Retorna a data do serviço
+     */
+    public function sc_get_date() {
+        $day = get_post_meta(get_the_ID(), 'vtx_service_day', true);
+        $month = get_post_meta(get_the_ID(), 'vtx_service_month', true);
+        $year = get_post_meta(get_the_ID(), 'vtx_service_year', true);
+        if (!$year) return '';
+        return $day ? "$day de $month, $year" : ($month ? "$month, $year" : $year);
+    }
+
+    /**
+     * Retorna as fotos do antes
+     */
+    public function sc_get_before_photos() {
+        $ids = get_post_meta(get_the_ID(), 'vtx_gallery_before', true);
+        return $this->render_photo_grid($ids);
+    }
+
+    /**
+     * Retorna as fotos do depois
+     */
+    public function sc_get_after_photos() {
+        $ids = get_post_meta(get_the_ID(), 'vtx_gallery_after', true);
+        return $this->render_photo_grid($ids);
+    }
+
+    /**
+     * Retorna a imagem de capa
+     */
+    public function sc_get_cover_image() {
+        $after_ids = get_post_meta(get_the_ID(), 'vtx_gallery_after', true);
+        if (!empty($after_ids)) {
+            $first_id = explode(',', $after_ids)[0];
+            return esc_url(wp_get_attachment_image_url($first_id, 'large'));
         }
+        return '';
+    }
 
-        ob_start();
-        ?>
-        <div class="vtx-frontend-gallery-wrap">
-            
-            <?php if ($desc || $location || $data_formatada) : ?>
-            <div class="vtx-service-details" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                <?php if ($desc) echo '<p style="font-size: 16px; margin-bottom: 10px;">' . nl2br(esc_html($desc)) . '</p>'; ?>
-                <div style="font-size: 14px; color: #666; display: flex; gap: 15px; flex-wrap: wrap;">
-                    <?php if ($location) echo '<span>📍 ' . esc_html($location) . '</span>'; ?>
-                    <?php if ($data_formatada) echo '<span>📅 ' . esc_html($data_formatada) . '</span>'; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
-                
-                <?php if (!empty($before_ids)) : ?>
-                <div class="vtx-gallery-col">
-                    <h3 style="border-bottom: 2px solid #d63638; padding-bottom: 10px; margin-bottom: 20px;">Antes</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
-                        <?php 
-                        foreach (explode(',', $before_ids) as $id) {
-                            $img_url = wp_get_attachment_image_url($id, 'large');
-                            if ($img_url) echo '<a href="'.esc_url($img_url).'" target="_blank"><img src="'.esc_url($img_url).'" style="width:100%; height:120px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></a>';
-                        }
-                        ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($after_ids)) : ?>
-                <div class="vtx-gallery-col">
-                    <h3 style="border-bottom: 2px solid #00a32a; padding-bottom: 10px; margin-bottom: 20px;">Depois</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
-                        <?php 
-                        foreach (explode(',', $after_ids) as $id) {
-                            $img_url = wp_get_attachment_image_url($id, 'large');
-                            if ($img_url) echo '<a href="'.esc_url($img_url).'" target="_blank"><img src="'.esc_url($img_url).'" style="width:100%; height:120px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></a>';
-                        }
-                        ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+    /**
+     * Renderiza a grade de fotos
+     */
+    private function render_photo_grid($ids_string) {
+        if (empty($ids_string)) return '';
+        $html = '<div class="vtx-sc-photo-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">';
+        foreach (explode(',', $ids_string) as $id) {
+            $img_url = wp_get_attachment_image_url($id, 'large');
+            if ($img_url) {
+                $html .= '<a href="'.esc_url($img_url).'" target="_blank"><img src="'.esc_url($img_url).'" style="width:100%; height:120px; object-fit:cover; border-radius:5px;"></a>';
+            }
+        }
+        $html .= '</div>';
+        return $html;
     }
 }
 
