@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.2.2
+ * Version:     1.3.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -43,6 +43,7 @@ class Vettryx_Fast_Gallery {
         add_shortcode('vtx_fg_fotos_antes', [$this, 'sc_get_before_photos']);
         add_shortcode('vtx_fg_fotos_depois', [$this, 'sc_get_after_photos']);
         add_shortcode('vtx_fg_capa', [$this, 'sc_get_cover_image']);
+        add_shortcode('vtx_fg_tags', [$this, 'sc_get_tags']);
     }
 
     // ==========================================
@@ -66,6 +67,7 @@ class Vettryx_Fast_Gallery {
     public function register_settings() {
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_cpt_slug', 'sanitize_title');
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_tax_slug', 'sanitize_title');
+        register_setting('vtx_gallery_settings_group', 'vtx_gallery_tag_slug', 'sanitize_title');
     }
 
     /**
@@ -74,6 +76,7 @@ class Vettryx_Fast_Gallery {
     public function render_settings_page() {
         $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
+        $tag_slug = get_option('vtx_gallery_tag_slug', 'detalhe-servico');
         ?>
         <div class="wrap">
             <h1>Configurações da Galeria (VETTRYX)</h1>
@@ -100,6 +103,13 @@ class Vettryx_Fast_Gallery {
                             <code><?php echo home_url('/'); ?></code>
                             <input type="text" name="vtx_gallery_tax_slug" value="<?php echo esc_attr($tax_slug); ?>" placeholder="tipo-servico" />
                             <code>/nome-da-categoria/</code>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Slug das Tags (Micro-serviços)<br><small>(Ex: detalhe-servico, tags)</small></th>
+                        <td>
+                            <code><?php echo home_url('/'); ?></code>
+                            <input type="text" name="vtx_gallery_tag_slug" value="<?php echo esc_attr(get_option('vtx_gallery_tag_slug', 'detalhe-servico')); ?>" placeholder="detalhe-servico" />
                         </td>
                     </tr>
                 </table>
@@ -200,6 +210,7 @@ class Vettryx_Fast_Gallery {
      * Registra a taxonomia
      */
     public function register_taxonomies() {
+        // Taxonomia de Categorias
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
         if(empty($tax_slug)) $tax_slug = 'tipo-servico';
 
@@ -228,6 +239,34 @@ class Vettryx_Fast_Gallery {
         ];
 
         register_taxonomy('vtx_service_category', ['vtx_gallery'], $args);
+
+        // Taxonomia de Tags
+        $tag_slug = get_option('vtx_gallery_tag_slug', 'detalhe-servico');
+        if(empty($tag_slug)) $tag_slug = 'detalhe-servico';
+
+        $labels_tag = [
+            'name'              => 'Serviços Detalhados (Tags)',
+            'singular_name'     => 'Serviço Detalhado',
+            'search_items'      => 'Buscar Serviços',
+            'all_items'         => 'Todos os Serviços Detalhados',
+            'edit_item'         => 'Editar Serviço',
+            'update_item'       => 'Atualizar Serviço',
+            'add_new_item'      => 'Adicionar Novo Serviço (Tag)',
+            'new_item_name'     => 'Novo Nome de Serviço',
+            'menu_name'         => 'Tags (Micro-serviços)',
+        ];
+
+        $args_tag = [
+            'hierarchical'      => false, // ATENÇÃO: É isto que transforma em "Tag"
+            'labels'            => $labels_tag,
+            'show_ui'           => true,
+            'show_admin_column' => true,
+            'query_var'         => true,
+            'rewrite'           => ['slug' => $tag_slug],
+            'show_in_rest'      => false, 
+        ];
+
+        register_taxonomy('vtx_service_tag', ['vtx_gallery'], $args_tag);
     }
 
     // ==========================================
@@ -522,6 +561,23 @@ class Vettryx_Fast_Gallery {
         }
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Retorna as tags (micro-serviços) do post
+     */
+    public function sc_get_tags() {
+        $terms = get_the_terms(get_the_ID(), 'vtx_service_tag');
+        
+        if ($terms && !is_wp_error($terms)) {
+            $tags_html = [];
+            foreach ($terms as $term) {
+                $tags_html[] = '<span class="vtx-tag" style="display:inline-block; background:#e2e8f0; color:#475569; padding:4px 8px; border-radius:4px; font-size:12px; margin-right:5px; margin-bottom:5px;">' . esc_html($term->name) . '</span>';
+            }
+            return '<div class="vtx-tags-wrapper">' . implode('', $tags_html) . '</div>';
+        }
+        
+        return '';
     }
 }
 
