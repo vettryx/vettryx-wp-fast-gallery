@@ -2,8 +2,8 @@
 /**
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
- * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis e Categorias com Capa.
- * Version:     1.4.0
+ * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
+ * Version:     1.5.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -42,12 +42,12 @@ class Vettryx_Fast_Gallery {
         add_action('admin_menu', [$this, 'add_settings_menu']);
         add_action('admin_init', [$this, 'register_settings']);
 
-        // 6. Atualização automática dos Permalinks para evitar Erro 404
+        // 6. Atualização automática dos Permalinks
         add_action('update_option_vtx_gallery_cpt_slug', 'flush_rewrite_rules');
         add_action('update_option_vtx_gallery_tax_slug', 'flush_rewrite_rules');
         add_action('update_option_vtx_gallery_tag_slug', 'flush_rewrite_rules');
 
-        // 7. Shortcodes Granulares (Para montagem manual no Elementor)
+        // 7. Shortcodes Granulares (Single Post Template)
         add_shortcode('vtx_fg_descricao', [$this, 'sc_get_desc']);
         add_shortcode('vtx_fg_local', [$this, 'sc_get_location']);
         add_shortcode('vtx_fg_data', [$this, 'sc_get_date']);
@@ -58,7 +58,11 @@ class Vettryx_Fast_Gallery {
         add_shortcode('vtx_fg_categoria_capa', [$this, 'sc_get_category_image']);
         add_shortcode('vtx_fg_tags', [$this, 'sc_get_tags']);
 
-        // 8. Filtro para forçar o slug dinâmico
+        // 8. Shortcodes Dinâmicos (Archive Template)
+        add_shortcode('vtx_fg_arquivo_titulo', [$this, 'sc_get_archive_title']);
+        add_shortcode('vtx_fg_arquivo_descricao', [$this, 'sc_get_archive_desc']);
+
+        // 9. Filtro para forçar o slug dinâmico
         add_filter('wp_insert_post_data', [$this, 'force_dynamic_slug'], 10, 2);
     }
 
@@ -83,6 +87,9 @@ class Vettryx_Fast_Gallery {
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_cpt_slug', 'sanitize_title');
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_tax_slug', 'sanitize_title');
         register_setting('vtx_gallery_settings_group', 'vtx_gallery_tag_slug', 'sanitize_title');
+        // Novos campos para a página de arquivo
+        register_setting('vtx_gallery_settings_group', 'vtx_gallery_archive_title', 'sanitize_text_field');
+        register_setting('vtx_gallery_settings_group', 'vtx_gallery_archive_desc', 'wp_kses_post');
     }
 
     // 1.3. Renderiza a Página de Configurações
@@ -90,20 +97,20 @@ class Vettryx_Fast_Gallery {
         $cpt_slug = get_option('vtx_gallery_cpt_slug', 'servicos');
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
         $tag_slug = get_option('vtx_gallery_tag_slug', 'detalhe-servico');
+        $archive_title = get_option('vtx_gallery_archive_title', 'Meus Trabalhos');
+        $archive_desc = get_option('vtx_gallery_archive_desc', '');
         ?>
         <div class="wrap">
             <h1>Configurações da Galeria (VETTRYX)</h1>
-            <p>Personalize os links (slugs) de como os trabalhos aparecerão na URL do site.</p>
-            
-            <div class="notice notice-success inline">
-                <p><strong>Dica:</strong> Ao salvar alterações nesta página, o sistema limpará o cache dos Links Permanentes automaticamente para evitar Erros 404.</p>
-            </div>
+            <p>Personalize os links (slugs) e os dados globais da página de trabalhos do site.</p>
 
             <form method="post" action="options.php">
                 <?php settings_fields('vtx_gallery_settings_group'); ?>
+                
+                <h2 class="title" style="margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">Estrutura de Links (Slugs)</h2>
                 <table class="form-table">
                     <tr valign="top">
-                        <th scope="row">Slug Principal dos Trabalhos<br><small>(Ex: servicos, projetos, obras)</small></th>
+                        <th scope="row">Slug Principal dos Trabalhos</th>
                         <td>
                             <code><?php echo home_url('/'); ?></code>
                             <input type="text" name="vtx_gallery_cpt_slug" value="<?php echo esc_attr($cpt_slug); ?>" placeholder="servicos" />
@@ -111,7 +118,7 @@ class Vettryx_Fast_Gallery {
                         </td>
                     </tr>
                     <tr valign="top">
-                        <th scope="row">Slug das Categorias<br><small>(Ex: tipo-servico, categoria-projeto)</small></th>
+                        <th scope="row">Slug das Categorias</th>
                         <td>
                             <code><?php echo home_url('/'); ?></code>
                             <input type="text" name="vtx_gallery_tax_slug" value="<?php echo esc_attr($tax_slug); ?>" placeholder="tipo-servico" />
@@ -119,21 +126,40 @@ class Vettryx_Fast_Gallery {
                         </td>
                     </tr>
                     <tr valign="top">
-                        <th scope="row">Slug das Tags (Micro-serviços)<br><small>(Ex: detalhe-servico, tags)</small></th>
+                        <th scope="row">Slug das Tags (Micro-serviços)</th>
                         <td>
                             <code><?php echo home_url('/'); ?></code>
                             <input type="text" name="vtx_gallery_tag_slug" value="<?php echo esc_attr($tag_slug); ?>" placeholder="detalhe-servico" />
                         </td>
                     </tr>
                 </table>
-                <?php submit_button('Salvar Slugs e Limpar Cache'); ?>
+
+                <h2 class="title" style="margin-top: 40px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">Página Principal de Arquivo (Global)</h2>
+                <p class="description">Estes dados aparecerão na página raiz (Ex: /servicos/) caso você utilize os shortcodes inteligentes no Elementor.</p>
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row">Título da Página de Arquivo</th>
+                        <td>
+                            <input type="text" name="vtx_gallery_archive_title" value="<?php echo esc_attr($archive_title); ?>" class="regular-text" placeholder="Ex: Nossos Projetos Executados" />
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Descrição da Página de Arquivo</th>
+                        <td>
+                            <textarea name="vtx_gallery_archive_desc" rows="5" class="large-text" placeholder="Ex: Confira abaixo o antes e depois de obras e reformas realizadas por nossa equipe..."><?php echo esc_textarea($archive_desc); ?></textarea>
+                            <p class="description">Excelente para o SEO da página principal da galeria.</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <?php submit_button('Salvar Configurações e Limpar Cache'); ?>
             </form>
 
-            <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ccd0d4;">
+            <hr style="margin-top: 40px; border: 0; border-top: 1px solid #ccd0d4;">
 
             <div style="margin-top: 20px; background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-left: 4px solid var(--brand-primary, #023047); box-shadow: 0 1px 1px rgba(0,0,0,.04);">
                 <h2 style="margin-top: 0;">Shortcodes para Montagem Manual (Elementor)</h2>
-                <p>Utilize os shortcodes abaixo para construir livremente o layout do seu <strong>Single Post Template</strong> ou do <strong>Loop Builder</strong>.</p>
+                <p>Utilize os shortcodes abaixo para construir livremente o layout do seu <strong>Single Post Template</strong>, <strong>Archive Template</strong> ou <strong>Loop Builder</strong>.</p>
 
                 <table class="wp-list-table widefat fixed striped" style="margin-top: 15px; width: 100%;">
                     <thead>
@@ -144,6 +170,19 @@ class Vettryx_Fast_Gallery {
                         </tr>
                     </thead>
                     <tbody>
+                        <tr><td colspan="3" style="background: #f0f0f1; font-weight: bold; text-align: center;">SHORTCODES PARA A PÁGINA DE ARQUIVO (ARCHIVE TEMPLATE)</td></tr>
+                        <tr>
+                            <td><strong>Título Dinâmico (Arquivo)</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_arquivo_titulo]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Puxa o título global (configurado acima) OU o nome da Categoria/Tag se estiver navegando nelas.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Descrição Dinâmica (Arquivo)</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_arquivo_descricao]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Puxa a descrição global (configurada acima) OU a descrição nativa da Categoria/Tag se estiver navegando nelas.</td>
+                        </tr>
+                        
+                        <tr><td colspan="3" style="background: #f0f0f1; font-weight: bold; text-align: center;">SHORTCODES PARA O TRABALHO INDIVIDUAL (SINGLE POST / LOOP ITEM)</td></tr>
                         <tr>
                             <td><strong>Descrição do Serviço</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_descricao]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
@@ -196,7 +235,7 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-    // 1.4. Força o Slug Dinâmico no Post Type
+    // 1.4. Força o Slug Dinâmico
     public function force_dynamic_slug($data, $postarr) {
         if ($data['post_type'] !== 'vtx_gallery' || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
             return $data;
@@ -263,7 +302,7 @@ class Vettryx_Fast_Gallery {
         register_post_type('vtx_gallery', $args);
     }
 
-    // 2.2. Registra as Taxonomias
+    // 2.2. Registra a Taxonomia
     public function register_taxonomies() {
         $tax_slug = get_option('vtx_gallery_tax_slug', 'tipo-servico');
         if(empty($tax_slug)) $tax_slug = 'tipo-servico';
@@ -326,7 +365,7 @@ class Vettryx_Fast_Gallery {
     // 3. META BOXES E DADOS DA TAXONOMIA
     // ==========================================
 
-    // 3.1. Adiciona o Campo de Imagem na Taxonomia
+    // 3.1. Adiciona o Campo de Imagem na Categoria
     public function add_category_image_field() {
         ?>
         <div class="form-field term-group">
@@ -339,7 +378,7 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-    // 3.2. Edita o Campo de Imagem na Taxonomia
+    // 3.2. Edita o Campo de Imagem na Categoria
     public function edit_category_image_field($term) {
         $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
         $image_url = $image_id ? wp_get_attachment_image_url($image_id, 'thumbnail') : '';
@@ -470,7 +509,7 @@ class Vettryx_Fast_Gallery {
         <?php
     }
 
-    // 4.4. Renderiza as Imagens de Preview
+    // 4.4. Renderiza as Imagens de Pré-visualização
     private function render_preview_images($ids_string) {
         if (empty($ids_string)) return;
         $ids = explode(',', $ids_string);
@@ -509,13 +548,12 @@ class Vettryx_Fast_Gallery {
         global $post_type;
         $screen = get_current_screen();
         
-        // Carrega o wp_media se for a edição do CPT ou a tela da nossa Taxonomia
         if ($post_type == 'vtx_gallery' || (isset($screen->taxonomy) && $screen->taxonomy == 'vtx_service_category')) {
             wp_enqueue_media();
         }
     }
 
-    // 5.2. Script para o Media Uploader
+    // 5.2. Script Global para o Media Uploader
     public function gallery_javascript() {
         global $post_type;
         $screen = get_current_screen();
@@ -612,16 +650,36 @@ class Vettryx_Fast_Gallery {
     }
 
     // ==========================================
-    // 6. FUNÇÕES DOS SHORTCODES GRANULARES
+    // 6. FUNÇÕES DOS SHORTCODES INTELIGENTES
     // ==========================================
 
-    // 6.1. Retorna a Descrição do Serviço
+    // 6.1. Traz o Título Dinâmico do Arquivo
+    public function sc_get_archive_title() {
+        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
+            return single_term_title('', false); // Ex: "Pintura Externa"
+        } elseif (is_post_type_archive('vtx_gallery')) {
+            return get_option('vtx_gallery_archive_title', 'Meus Trabalhos'); // Ex: "Nossos Projetos"
+        }
+        return '';
+    }
+
+    // 6.2. Traz a Descrição Dinâmica do Arquivo
+    public function sc_get_archive_desc() {
+        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
+            return term_description(); // Puxa a descrição da categoria/tag atual
+        } elseif (is_post_type_archive('vtx_gallery')) {
+            return wp_kses_post(get_option('vtx_gallery_archive_desc', '')); // Puxa a descrição do painel
+        }
+        return '';
+    }
+
+    // 6.3. Traz a Descrição do Post
     public function sc_get_desc() {
         $desc = get_post_meta(get_the_ID(), 'vtx_service_desc', true);
         return $desc ? nl2br(esc_html($desc)) : '';
     }
 
-    // 6.2. Retorna a Data do Serviço
+    // 6.4. Traz a Data do Post
     public function sc_get_date() {
         $day = get_post_meta(get_the_ID(), 'vtx_service_day', true);
         $month = get_post_meta(get_the_ID(), 'vtx_service_month', true);
@@ -647,24 +705,24 @@ class Vettryx_Fast_Gallery {
         }
     }
 
-    // 6.3. Retorna a Localização do Serviço
+    // 6.5. Traz a Localização do Post
     public function sc_get_location() {
         return esc_html(get_post_meta(get_the_ID(), 'vtx_service_location', true));
     }
 
-    // 6.4. Retorna as Fotos de "Antes"
+    // 6.6. Traz as Fotos de Antes
     public function sc_get_before_photos() {
         $ids = get_post_meta(get_the_ID(), 'vtx_gallery_before', true);
         return $this->render_photo_grid($ids);
     }
 
-    // 6.5. Retorna as Fotos de "Depois"
+    // 6.7. Traz as Fotos de Depois
     public function sc_get_after_photos() {
         $ids = get_post_meta(get_the_ID(), 'vtx_gallery_after', true);
         return $this->render_photo_grid($ids);
     }
 
-    // 6.6. Retorna a Imagem de Capa
+    // 6.8. Traz a Imagem de Capa
     public function sc_get_cover_image() {
         $after_ids = get_post_meta(get_the_ID(), 'vtx_gallery_after', true);
         if (!empty($after_ids)) {
@@ -674,7 +732,6 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.7. Renderiza a Grade de Fotos
     private function render_photo_grid($ids_string) {
         if (empty($ids_string)) return '';
         $html = '<div class="vtx-sc-photo-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">';
@@ -688,7 +745,7 @@ class Vettryx_Fast_Gallery {
         return $html;
     }
 
-    // 6.8. Retorna a Categoria do Serviço
+    // 6.9. Traz a Categoria do Post
     public function sc_get_category() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
         
@@ -704,11 +761,11 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.9. Retorna a Imagem da Categoria
+    // 6.10. Traz a Imagem da Categoria
     public function sc_get_category_image() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
         if ($terms && !is_wp_error($terms)) {
-            $term = $terms[0]; // Pega a primeira categoria
+            $term = $terms[0];
             $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
             if ($image_id) {
                 return esc_url(wp_get_attachment_image_url($image_id, 'large'));
@@ -717,7 +774,7 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.10. Retorna as Tags do Serviço
+    // 6.11. Traz as Tags do Post
     public function sc_get_tags() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_tag');
         if ($terms && !is_wp_error($terms)) {
