@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.3.3
+ * Version:     1.3.4
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -43,6 +43,7 @@ class Vettryx_Fast_Gallery {
         add_shortcode('vtx_fg_fotos_antes', [$this, 'sc_get_before_photos']);
         add_shortcode('vtx_fg_fotos_depois', [$this, 'sc_get_after_photos']);
         add_shortcode('vtx_fg_capa', [$this, 'sc_get_cover_image']);
+        add_shortcode('vtx_fg_categoria', [$this, 'sc_get_category']);
         add_shortcode('vtx_fg_tags', [$this, 'sc_get_tags']);
 
         // 6. Filtro para forçar o slug dinâmico
@@ -163,6 +164,11 @@ class Vettryx_Fast_Gallery {
                             <td><strong>URL da Foto de Capa</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_capa]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
                             <td>Retorna o LINK puro da primeira foto do "Depois". Ideal para usar no Elementor como URL Dinâmica de fundo do <strong>Loop Builder</strong>.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Categoria (Tipo de Serviço)</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_categoria]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Imprime a categoria principal do serviço (Ex: Pintura e Efeitos Decorativos).</td>
                         </tr>
                         <tr>
                             <td><strong>Tags (Micro-serviços)</strong></td>
@@ -631,6 +637,23 @@ class Vettryx_Fast_Gallery {
         }
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Retorna a categoria principal (tipo de serviço) do post
+     */
+    public function sc_get_category() {
+        $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
+        
+        if ($terms && !is_wp_error($terms)) {
+            $cats_html = [];
+            foreach ($terms as $term) {
+                $cats_html[] = '<span class="vtx-category" style="font-weight: 600; color: #023047;">' . esc_html($term->name) . '</span>';
+            }
+            return '<div class="vtx-categories-wrapper">' . implode(', ', $cats_html) . '</div>';
+        }
+        
+        return '';
     }
 
     /**
