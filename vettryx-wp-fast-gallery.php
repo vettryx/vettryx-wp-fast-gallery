@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.3.11
+ * Version:     1.3.12
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -662,16 +662,14 @@ class Vettryx_Fast_Gallery {
      */
     public function sc_get_tags() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_tag');
-        
         if ($terms && !is_wp_error($terms)) {
             $tags_html = [];
             foreach ($terms as $term) {
                 $link = get_term_link($term);
-                $tags_html[] = '<a href="' . esc_url($link) . '" class="vtx-tag" style="display:inline-block; background:#e2e8f0; color:inherit; padding:4px 10px; border-radius:4px; font-size:13px; text-decoration: none; white-space: nowrap;">' . esc_html($term->name) . '</a>';
+                $tags_html[] = '<a href="' . esc_url($link) . '" class="vtx-tag" style="float: left !important; background: #e2e8f0 !important; color: inherit !important; padding: 6px 12px !important; border-radius: 4px !important; font-size: 13px !important; text-decoration: none !important; white-space: nowrap !important; margin: 0 10px 10px 0 !important; line-height: 1.2 !important;">' . esc_html($term->name) . '</a>';
             }
-            return '<div class="vtx-tags-wrapper" style="display: flex; flex-wrap: wrap; gap: 8px;">' . implode('', $tags_html) . '</div>';
+            return '<div class="vtx-tags-wrapper" style="display: block !important; width: 100% !important; overflow: hidden !important; clear: both !important;">' . implode('', $tags_html) . '</div>';
         }
-        
         return '';
     }
 }
