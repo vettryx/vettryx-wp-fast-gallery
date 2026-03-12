@@ -665,15 +665,9 @@ class Vettryx_Fast_Gallery {
         if ($terms && !is_wp_error($terms)) {
             $tags_html = [];
             foreach ($terms as $term) {
-                $tags_html[] = '<span class="vtx-tag">' . esc_html($term->name) . '</span>';
+                $tags_html[] = '<span class="vtx-tag" style="display:inline-block; background:#e2e8f0; color:#475569; padding:4px 8px; border-radius:4px; font-size:12px; margin-right:5px; margin-bottom:5px;">' . esc_html($term->name) . '</span>';
             }
-            
-            $css = '<style>
-                .vtx-tags-wrapper { display: flex; flex-wrap: wrap; gap: 8px; }
-                .vtx-tag { display: inline-block; background: #e2e8f0; color: #475569; padding: 5px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; }
-            </style>';
-
-            return $css . '<div class="vtx-tags-wrapper">' . implode('', $tags_html) . '</div>';
+            return '<div class="vtx-tags-wrapper">' . implode('', $tags_html) . '</div>';
         }
         
         return '';
