@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.3.0
+ * Version:     1.3.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -44,6 +44,9 @@ class Vettryx_Fast_Gallery {
         add_shortcode('vtx_fg_fotos_depois', [$this, 'sc_get_after_photos']);
         add_shortcode('vtx_fg_capa', [$this, 'sc_get_cover_image']);
         add_shortcode('vtx_fg_tags', [$this, 'sc_get_tags']);
+
+        // 6. Filtro para forçar o slug dinâmico
+        add_filter('wp_insert_post_data', [$this, 'force_dynamic_slug'], 10, 2);
     }
 
     // ==========================================
@@ -167,6 +170,49 @@ class Vettryx_Fast_Gallery {
 
         </div>
         <?php
+    }
+
+    /**
+     * Força a criação do slug no formato YYYYMMDD-titulo
+     */
+    public function force_dynamic_slug($data, $postarr) {
+        // Garante que só afete o nosso Custom Post Type e ignora salvamentos automáticos
+        if ($data['post_type'] !== 'vtx_gallery' || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
+            return $data;
+        }
+
+        // Ignora rascunhos automáticos
+        if (in_array($data['post_status'], ['auto-draft', 'trash'])) {
+            return $data;
+        }
+
+        // Captura os dados de data enviados no formulário ($_POST)
+        // Se não houver POST (ex: edição rápida), tenta pegar do banco de dados
+        $year = isset($_POST['vtx_service_year']) ? sanitize_text_field($_POST['vtx_service_year']) : get_post_meta($postarr['ID'], 'vtx_service_year', true);
+        $month = isset($_POST['vtx_service_month']) ? sanitize_text_field($_POST['vtx_service_month']) : get_post_meta($postarr['ID'], 'vtx_service_month', true);
+        $day = isset($_POST['vtx_service_day']) ? sanitize_text_field($_POST['vtx_service_day']) : get_post_meta($postarr['ID'], 'vtx_service_day', true);
+
+        // Se não tiver ano preenchido, não fazemos nada
+        if (empty($year)) {
+            return $data;
+        }
+
+        // Monta o prefixo concatenando o que existir (YYYY, YYYYMM ou YYYYMMDD)
+        $date_prefix = $year . $month . $day;
+
+        // Pega o título e limpa para formato URL
+        $title_slug = sanitize_title($data['post_title']);
+
+        // Monta o slug desejado final
+        $desired_slug = $date_prefix . '-' . $title_slug;
+
+        // Compara com o slug atual. Se for diferente, mandamos o WP atualizar.
+        // O wp_unique_post_slug é a inteligência nativa do WP: se já existir um "2026-pintura", ele gera "2026-pintura-2"
+        if ($data['post_name'] !== $desired_slug) {
+            $data['post_name'] = wp_unique_post_slug($desired_slug, $postarr['ID'], $data['post_status'], $data['post_type'], $data['post_parent']);
+        }
+
+        return $data;
     }
 
     // ==========================================
