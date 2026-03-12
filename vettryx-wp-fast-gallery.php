@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.3.2
+ * Version:     1.3.3
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -580,6 +580,13 @@ class Vettryx_Fast_Gallery {
         } else {
             return $year;
         }
+    }
+
+    /**
+     * Retorna a localização do serviço
+     */
+    public function sc_get_location() {
+        return esc_html(get_post_meta(get_the_ID(), 'vtx_service_location', true));
     }
 
     /**
