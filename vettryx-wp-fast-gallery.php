@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-fast-gallery
  * Description: Gerenciador simplificado de álbuns de serviços com fotos de "Antes e Depois" flexíveis.
- * Version:     1.3.1
+ * Version:     1.3.2
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -163,6 +163,11 @@ class Vettryx_Fast_Gallery {
                             <td><strong>URL da Foto de Capa</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_capa]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
                             <td>Retorna o LINK puro da primeira foto do "Depois". Ideal para usar no Elementor como URL Dinâmica de fundo do <strong>Loop Builder</strong>.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tags (Micro-serviços)</strong></td>
+                            <td><input type="text" readonly value="[vtx_fg_tags]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Imprime a lista de micro-serviços em formato de etiquetas visuais (badges).</td>
                         </tr>
                     </tbody>
                 </table>
@@ -548,21 +553,33 @@ class Vettryx_Fast_Gallery {
     }
 
     /**
-     * Retorna a localização do serviço
-     */
-    public function sc_get_location() {
-        return esc_html(get_post_meta(get_the_ID(), 'vtx_service_location', true));
-    }
-
-    /**
      * Retorna a data do serviço
      */
     public function sc_get_date() {
         $day = get_post_meta(get_the_ID(), 'vtx_service_day', true);
         $month = get_post_meta(get_the_ID(), 'vtx_service_month', true);
         $year = get_post_meta(get_the_ID(), 'vtx_service_year', true);
+        
         if (!$year) return '';
-        return $day ? "$day de $month, $year" : ($month ? "$month, $year" : $year);
+
+        // Array com os nomes completos dos meses
+        $meses = [
+            '01' => 'Janeiro', '02' => 'Fevereiro', '03' => 'Março',
+            '04' => 'Abril',   '05' => 'Maio',      '06' => 'Junho',
+            '07' => 'Julho',   '08' => 'Agosto',    '09' => 'Setembro',
+            '10' => 'Outubro', '11' => 'Novembro',  '12' => 'Dezembro'
+        ];
+        
+        $month_text = ($month && isset($meses[$month])) ? $meses[$month] : '';
+
+        // Monta a string dependendo do que foi preenchido
+        if ($day && $month_text) {
+            return "$day de $month_text de $year";
+        } elseif ($month_text) {
+            return "$month_text de $year";
+        } else {
+            return $year;
+        }
     }
 
     /**
