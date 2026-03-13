@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.5.0
+ * Version:     1.5.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -209,9 +209,9 @@ class Vettryx_Fast_Gallery {
                             <td>Gera o bloco de imagens da coluna "Depois".</td>
                         </tr>
                         <tr>
-                            <td><strong>URL da Foto de Capa (Álbum)</strong></td>
+                            <td><strong>Foto de Capa (Álbum)</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_capa]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
-                            <td>Retorna o LINK puro da primeira foto do "Depois".</td>
+                            <td>Exibe a primeira foto do "Depois" com formatação visual pronta.</td>
                         </tr>
                         <tr>
                             <td><strong>Categoria (Tipo de Serviço)</strong></td>
@@ -219,9 +219,9 @@ class Vettryx_Fast_Gallery {
                             <td>Imprime a categoria principal do serviço com link.</td>
                         </tr>
                         <tr>
-                            <td><strong>URL da Foto da Categoria</strong></td>
+                            <td><strong>Foto da Categoria</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_categoria_capa]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
-                            <td>Retorna o LINK puro da imagem configurada na Categoria.</td>
+                            <td>Exibe a imagem cadastrada na Categoria com formatação visual pronta.</td>
                         </tr>
                         <tr>
                             <td><strong>Tags (Micro-serviços)</strong></td>
@@ -727,11 +727,13 @@ class Vettryx_Fast_Gallery {
         $after_ids = get_post_meta(get_the_ID(), 'vtx_gallery_after', true);
         if (!empty($after_ids)) {
             $first_id = explode(',', $after_ids)[0];
-            return esc_url(wp_get_attachment_image_url($first_id, 'large'));
+            $img_url = wp_get_attachment_image_url($first_id, 'large');
+            return '<img src="'.esc_url($img_url).'" alt="Foto de Capa do Projeto" class="vtx-cover-img" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; margin-bottom: 15px;">';
         }
         return '';
     }
 
+    // 6.9. Renderiza a grade de fotos
     private function render_photo_grid($ids_string) {
         if (empty($ids_string)) return '';
         $html = '<div class="vtx-sc-photo-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">';
@@ -745,7 +747,7 @@ class Vettryx_Fast_Gallery {
         return $html;
     }
 
-    // 6.9. Traz a Categoria do Post
+    // 6.10. Traz a Categoria do Post
     public function sc_get_category() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
         
@@ -761,20 +763,21 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.10. Traz a Imagem da Categoria
+    // 6.11. Traz a Imagem da Categoria
     public function sc_get_category_image() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
         if ($terms && !is_wp_error($terms)) {
             $term = $terms[0];
             $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
             if ($image_id) {
-                return esc_url(wp_get_attachment_image_url($image_id, 'large'));
+                $img_url = wp_get_attachment_image_url($image_id, 'large');
+                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" class="vtx-cat-cover-img" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; margin-bottom: 15px;">';
             }
         }
         return '';
     }
 
-    // 6.11. Traz as Tags do Post
+    // 6.12. Traz as Tags do Post
     public function sc_get_tags() {
         $terms = get_the_terms(get_the_ID(), 'vtx_service_tag');
         if ($terms && !is_wp_error($terms)) {
