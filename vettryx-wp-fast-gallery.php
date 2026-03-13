@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.5.1
+ * Version:     1.5.2
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -728,7 +728,7 @@ class Vettryx_Fast_Gallery {
         if (!empty($after_ids)) {
             $first_id = explode(',', $after_ids)[0];
             $img_url = wp_get_attachment_image_url($first_id, 'large');
-            return '<img src="'.esc_url($img_url).'" alt="Foto de Capa do Projeto" class="vtx-cover-img" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; margin-bottom: 15px;">';
+            return '<img src="'.esc_url($img_url).'" alt="Foto de Capa do Projeto" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
         }
         return '';
     }
@@ -771,7 +771,7 @@ class Vettryx_Fast_Gallery {
             $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
             if ($image_id) {
                 $img_url = wp_get_attachment_image_url($image_id, 'large');
-                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" class="vtx-cat-cover-img" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; margin-bottom: 15px;">';
+                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
             }
         }
         return '';
