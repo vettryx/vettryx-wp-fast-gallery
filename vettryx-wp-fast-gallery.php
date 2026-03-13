@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.6.0
+ * Version:     1.6.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -678,22 +678,24 @@ class Vettryx_Fast_Gallery {
     // 6. FUNÇÕES DOS SHORTCODES INTELIGENTES
     // ==========================================
 
-    // 6.1. Traz o Título Dinâmico do Arquivo
+    // 6.1. Traz o Título Dinâmico (Inteligente para Arquivo e Loop)
     public function sc_get_archive_title() {
-        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
-            return single_term_title('', false); // Ex: "Pintura Externa"
+        $obj = get_queried_object();
+        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
+            return esc_html($obj->name);
         } elseif (is_post_type_archive('vtx_gallery')) {
-            return get_option('vtx_gallery_archive_title', 'Meus Trabalhos'); // Ex: "Nossos Projetos"
+            return get_option('vtx_gallery_archive_title', 'Meus Trabalhos');
         }
         return '';
     }
 
-    // 6.2. Traz a Descrição Dinâmica do Arquivo
+    // 6.2. Traz a Descrição Dinâmica (Inteligente para Arquivo e Loop)
     public function sc_get_archive_desc() {
-        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
-            return term_description(); // Puxa a descrição da categoria/tag atual
+        $obj = get_queried_object();
+        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
+            return wpautop(esc_html($obj->description));
         } elseif (is_post_type_archive('vtx_gallery')) {
-            return wp_kses_post(get_option('vtx_gallery_archive_desc', '')); // Puxa a descrição do painel
+            return wp_kses_post(get_option('vtx_gallery_archive_desc', ''));
         }
         return '';
     }
@@ -788,15 +790,30 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.11. Traz a Imagem da Categoria
+    // 6.11. Traz a Imagem da Categoria (Inteligente para Single Post e Loop)
     public function sc_get_category_image() {
-        $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
-        if ($terms && !is_wp_error($terms)) {
-            $term = $terms[0];
-            $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
+        $term_id = 0;
+        $term_name = '';
+
+        // Tenta roubar o contexto do Elementor Loop Carousel
+        $obj = get_queried_object();
+        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
+            $term_id = $obj->term_id;
+            $term_name = $obj->name;
+        } else {
+            // Fallback para Post Individual
+            $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
+            if ($terms && !is_wp_error($terms)) {
+                $term_id = $terms[0]->term_id;
+                $term_name = $terms[0]->name;
+            }
+        }
+
+        if ($term_id) {
+            $image_id = get_term_meta($term_id, 'vtx_category_image', true);
             if ($image_id) {
                 $img_url = wp_get_attachment_image_url($image_id, 'large');
-                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
+                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term_name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
             }
         }
         return '';
