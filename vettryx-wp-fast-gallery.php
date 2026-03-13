@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.5.2
+ * Version:     1.6.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -20,6 +20,7 @@ if (!defined('ABSPATH')) {
 class Vettryx_Fast_Gallery {
 
     public function __construct() {
+
         // 1. Registro do CPT e Taxonomia
         add_action('init', [$this, 'register_cpt']);
         add_action('init', [$this, 'register_taxonomies']);
@@ -64,6 +65,12 @@ class Vettryx_Fast_Gallery {
 
         // 9. Filtro para forçar o slug dinâmico
         add_filter('wp_insert_post_data', [$this, 'force_dynamic_slug'], 10, 2);
+
+        // 10. Shortcodes para loop
+        add_shortcode('vtx_fg_loop_categoria_capa', [$this, 'sc_get_loop_category_image']);
+        add_shortcode('vtx_loop_titulo', [$this, 'sc_loop_titulo']);
+        add_shortcode('vtx_loop_desc', [$this, 'sc_loop_desc']);
+        add_shortcode('vtx_loop_capa', [$this, 'sc_loop_capa']);
     }
 
     // ==========================================
@@ -228,6 +235,24 @@ class Vettryx_Fast_Gallery {
                             <td><input type="text" readonly value="[vtx_fg_tags]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
                             <td>Imprime a lista de micro-serviços em formato de etiquetas.</td>
                         </tr>
+
+                        <tr><td colspan="3" style="background: #e2e8f0; font-weight: bold; text-align: center; color: #0f172a;">SHORTCODES EXCLUSIVOS PARA ELEMENTOR LOOP CAROUSEL (CATEGORIAS)</td></tr>
+                        <tr><td colspan="3" style="font-size: 12px; font-style: italic; color: #64748b; text-align: center;">Use no widget 'Editor de Texto'. Em Tags Dinâmicas, escolha 'Term ID', vá em 'Avançado' e coloque o shortcode em <strong>Antes</strong> e feche <code>"]</code> em <strong>Depois</strong>.</td></tr>
+                        <tr>
+                            <td><strong>Título da Categoria (Loop)</strong></td>
+                            <td><input type="text" readonly value='[vtx_loop_titulo id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Exibe o título da Categoria baseado no ID do card atual.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Descrição da Categoria (Loop)</strong></td>
+                            <td><input type="text" readonly value='[vtx_loop_desc id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Exibe a descrição da Categoria baseada no ID do card atual.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Foto da Categoria (Loop)</strong></td>
+                            <td><input type="text" readonly value='[vtx_loop_capa id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
+                            <td>Exibe a imagem da Categoria (formatada) baseada no ID do card atual.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -295,7 +320,7 @@ class Vettryx_Fast_Gallery {
             'hierarchical'       => false,
             'menu_position'      => 5,
             'supports'           => ['title'], 
-            'show_in_rest'       => false,
+            'show_in_rest'       => true,
             'rewrite'            => ['slug' => $cpt_slug, 'with_front' => false],
         ];
 
@@ -328,7 +353,7 @@ class Vettryx_Fast_Gallery {
             'show_admin_column' => true,
             'query_var'         => true,
             'rewrite'           => ['slug' => $tax_slug, 'with_front' => false],
-            'show_in_rest'      => false,
+            'show_in_rest'      => true,
         ];
 
         register_taxonomy('vtx_service_category', ['vtx_gallery'], $args);
@@ -787,6 +812,40 @@ class Vettryx_Fast_Gallery {
                 $tags_html[] = '<a href="' . esc_url($link) . '" class="vtx-tag" style="float: left !important; background: #e2e8f0 !important; color: inherit !important; padding: 6px 12px !important; border-radius: 4px !important; font-size: 13px !important; text-decoration: none !important; white-space: nowrap !important; margin: 0 10px 10px 0 !important; line-height: 1.2 !important;">' . esc_html($term->name) . '</a>';
             }
             return '<div class="vtx-tags-wrapper" style="display: block !important; width: 100% !important; overflow: hidden !important; clear: both !important;">' . implode('', $tags_html) . '</div>';
+        }
+        return '';
+    }
+
+    // 6.13. Traz o Titulo da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
+    public function sc_loop_titulo($atts) {
+        $atts = shortcode_atts(['id' => ''], $atts);
+        if (empty($atts['id'])) return '';
+        
+        $term = get_term(intval($atts['id']), 'vtx_service_category');
+        return ($term && !is_wp_error($term)) ? esc_html($term->name) : '';
+    }
+
+    // 6.14. Traz a Descrição da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
+    public function sc_loop_desc($atts) {
+        $atts = shortcode_atts(['id' => ''], $atts);
+        if (empty($atts['id'])) return '';
+        
+        $term = get_term(intval($atts['id']), 'vtx_service_category');
+        return ($term && !is_wp_error($term)) ? wpautop(esc_html($term->description)) : '';
+    }
+
+    // 6.15. Traz a Imagem da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
+    public function sc_loop_capa($atts) {
+        $atts = shortcode_atts(['id' => ''], $atts);
+        if (empty($atts['id'])) return '';
+        
+        $term = get_term(intval($atts['id']), 'vtx_service_category');
+        if ($term && !is_wp_error($term)) {
+            $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
+            if ($image_id) {
+                $img_url = wp_get_attachment_image_url($image_id, 'large');
+                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 0; display: block;">';
+            }
         }
         return '';
     }
