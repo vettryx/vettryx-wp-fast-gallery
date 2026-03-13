@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.6.3
+ * Version:     1.7.0
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -65,12 +65,6 @@ class Vettryx_Fast_Gallery {
 
         // 9. Filtro para forçar o slug dinâmico
         add_filter('wp_insert_post_data', [$this, 'force_dynamic_slug'], 10, 2);
-
-        // 10. Shortcodes para loop
-        add_shortcode('vtx_fg_loop_categoria_capa', [$this, 'sc_get_loop_category_image']);
-        add_shortcode('vtx_loop_titulo', [$this, 'sc_loop_titulo']);
-        add_shortcode('vtx_loop_desc', [$this, 'sc_loop_desc']);
-        add_shortcode('vtx_loop_capa', [$this, 'sc_loop_capa']);
     }
 
     // ==========================================
@@ -166,7 +160,7 @@ class Vettryx_Fast_Gallery {
 
             <div style="margin-top: 20px; background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-left: 4px solid var(--brand-primary, #023047); box-shadow: 0 1px 1px rgba(0,0,0,.04);">
                 <h2 style="margin-top: 0;">Shortcodes para Montagem Manual (Elementor)</h2>
-                <p>Utilize os shortcodes abaixo para construir livremente o layout do seu <strong>Single Post Template</strong>, <strong>Archive Template</strong> ou <strong>Loop Builder</strong>.</p>
+                <p>Utilize os shortcodes abaixo para construir livremente o layout do seu <strong>Single Post Template</strong> ou <strong>Archive Template</strong>.</p>
 
                 <table class="wp-list-table widefat fixed striped" style="margin-top: 15px; width: 100%;">
                     <thead>
@@ -189,7 +183,7 @@ class Vettryx_Fast_Gallery {
                             <td>Puxa a descrição global (configurada acima) OU a descrição nativa da Categoria/Tag se estiver navegando nelas.</td>
                         </tr>
                         
-                        <tr><td colspan="3" style="background: #f0f0f1; font-weight: bold; text-align: center;">SHORTCODES PARA O TRABALHO INDIVIDUAL (SINGLE POST / LOOP ITEM)</td></tr>
+                        <tr><td colspan="3" style="background: #f0f0f1; font-weight: bold; text-align: center;">SHORTCODES PARA O TRABALHO INDIVIDUAL (SINGLE POST ITEM)</td></tr>
                         <tr>
                             <td><strong>Descrição do Serviço</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_descricao]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
@@ -234,24 +228,6 @@ class Vettryx_Fast_Gallery {
                             <td><strong>Tags (Micro-serviços)</strong></td>
                             <td><input type="text" readonly value="[vtx_fg_tags]" style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #d63638; font-weight: bold;" onfocus="this.select();"></td>
                             <td>Imprime a lista de micro-serviços em formato de etiquetas.</td>
-                        </tr>
-
-                        <tr><td colspan="3" style="background: #e2e8f0; font-weight: bold; text-align: center; color: #0f172a;">SHORTCODES EXCLUSIVOS PARA ELEMENTOR LOOP CAROUSEL (CATEGORIAS)</td></tr>
-                        <tr><td colspan="3" style="font-size: 12px; font-style: italic; color: #64748b; text-align: center;">Use no widget 'Editor de Texto'. Em Tags Dinâmicas, escolha 'Term ID', vá em 'Avançado' e coloque o shortcode em <strong>Antes</strong> e feche <code>"]</code> em <strong>Depois</strong>.</td></tr>
-                        <tr>
-                            <td><strong>Título da Categoria (Loop)</strong></td>
-                            <td><input type="text" readonly value='[vtx_loop_titulo id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
-                            <td>Exibe o título da Categoria baseado no ID do card atual.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Descrição da Categoria (Loop)</strong></td>
-                            <td><input type="text" readonly value='[vtx_loop_desc id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
-                            <td>Exibe a descrição da Categoria baseada no ID do card atual.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Foto da Categoria (Loop)</strong></td>
-                            <td><input type="text" readonly value='[vtx_loop_capa id="' style="width: 100%; font-family: monospace; background: transparent; border: none; cursor: pointer; color: #2563eb; font-weight: bold;" onfocus="this.select();"></td>
-                            <td>Exibe a imagem da Categoria (formatada) baseada no ID do card atual.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -678,22 +654,22 @@ class Vettryx_Fast_Gallery {
     // 6. FUNÇÕES DOS SHORTCODES INTELIGENTES
     // ==========================================
 
-    // 6.1. Traz o Título Dinâmico (Inteligente para Arquivo e Loop)
+    // 6.1. Traz o Título Dinâmico do Arquivo
     public function sc_get_archive_title() {
-        $obj = get_queried_object();
-        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
-            return esc_html($obj->name);
+        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
+            $term = get_queried_object();
+            return ($term && isset($term->name)) ? $term->name : '';
         } elseif (is_post_type_archive('vtx_gallery')) {
             return get_option('vtx_gallery_archive_title', 'Meus Trabalhos');
         }
         return '';
     }
 
-    // 6.2. Traz a Descrição Dinâmica (Inteligente para Arquivo e Loop)
+    // 6.2. Traz a Descrição Dinâmica do Arquivo
     public function sc_get_archive_desc() {
-        $obj = get_queried_object();
-        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
-            return wpautop(esc_html($obj->description));
+        if (is_tax('vtx_service_category') || is_tax('vtx_service_tag')) {
+            $term = get_queried_object();
+            return ($term && isset($term->description)) ? wpautop($term->description) : '';
         } elseif (is_post_type_archive('vtx_gallery')) {
             return wp_kses_post(get_option('vtx_gallery_archive_desc', ''));
         }
@@ -790,30 +766,15 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.11. Traz a Imagem da Categoria (Inteligente para Single Post e Loop)
+    // 6.11. Traz a Imagem da Categoria
     public function sc_get_category_image() {
-        $term_id = 0;
-        $term_name = '';
-
-        // Tenta roubar o contexto do Elementor Loop Carousel
-        $obj = get_queried_object();
-        if ($obj instanceof WP_Term && in_array($obj->taxonomy, ['vtx_service_category', 'vtx_service_tag'])) {
-            $term_id = $obj->term_id;
-            $term_name = $obj->name;
-        } else {
-            // Fallback para Post Individual
-            $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
-            if ($terms && !is_wp_error($terms)) {
-                $term_id = $terms[0]->term_id;
-                $term_name = $terms[0]->name;
-            }
-        }
-
-        if ($term_id) {
-            $image_id = get_term_meta($term_id, 'vtx_category_image', true);
+        $terms = get_the_terms(get_the_ID(), 'vtx_service_category');
+        if ($terms && !is_wp_error($terms)) {
+            $term = $terms[0];
+            $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
             if ($image_id) {
                 $img_url = wp_get_attachment_image_url($image_id, 'large');
-                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term_name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
+                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: block;">';
             }
         }
         return '';
@@ -829,34 +790,6 @@ class Vettryx_Fast_Gallery {
                 $tags_html[] = '<a href="' . esc_url($link) . '" class="vtx-tag" style="float: left !important; background: #e2e8f0 !important; color: inherit !important; padding: 6px 12px !important; border-radius: 4px !important; font-size: 13px !important; text-decoration: none !important; white-space: nowrap !important; margin: 0 10px 10px 0 !important; line-height: 1.2 !important;">' . esc_html($term->name) . '</a>';
             }
             return '<div class="vtx-tags-wrapper" style="display: block !important; width: 100% !important; overflow: hidden !important; clear: both !important;">' . implode('', $tags_html) . '</div>';
-        }
-        return '';
-    }
-
-    // 6.13. Título da Categoria DENTRO do Loop de Taxonomia
-    public function sc_loop_titulo() {
-        $term_id = get_the_ID(); // Pega o ID fantasma que o Elementor injeta no loop
-        $term = get_term($term_id, 'vtx_service_category');
-        return ($term && !is_wp_error($term)) ? esc_html($term->name) : '';
-    }
-
-    // 6.14. Descrição da Categoria DENTRO do Loop de Taxonomia
-    public function sc_loop_desc() {
-        $term_id = get_the_ID();
-        $term = get_term($term_id, 'vtx_service_category');
-        return ($term && !is_wp_error($term)) ? wpautop(esc_html($term->description)) : '';
-    }
-
-    // 6.15. Imagem da Categoria DENTRO do Loop de Taxonomia
-    public function sc_loop_capa() {
-        $term_id = get_the_ID();
-        $term = get_term($term_id, 'vtx_service_category');
-        if ($term && !is_wp_error($term)) {
-            $image_id = get_term_meta($term_id, 'vtx_category_image', true);
-            if ($image_id) {
-                $img_url = wp_get_attachment_image_url($image_id, 'large');
-                return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 0; display: block;">';
-            }
         }
         return '';
     }
