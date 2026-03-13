@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.6.1
+ * Version:     1.6.3
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     GPLv3
@@ -833,32 +833,26 @@ class Vettryx_Fast_Gallery {
         return '';
     }
 
-    // 6.13. Traz o Titulo da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
-    public function sc_loop_titulo($atts) {
-        $atts = shortcode_atts(['id' => ''], $atts);
-        if (empty($atts['id'])) return '';
-        
-        $term = get_term(intval($atts['id']), 'vtx_service_category');
+    // 6.13. Título da Categoria DENTRO do Loop de Taxonomia
+    public function sc_loop_titulo() {
+        $term_id = get_the_ID(); // Pega o ID fantasma que o Elementor injeta no loop
+        $term = get_term($term_id, 'vtx_service_category');
         return ($term && !is_wp_error($term)) ? esc_html($term->name) : '';
     }
 
-    // 6.14. Traz a Descrição da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
-    public function sc_loop_desc($atts) {
-        $atts = shortcode_atts(['id' => ''], $atts);
-        if (empty($atts['id'])) return '';
-        
-        $term = get_term(intval($atts['id']), 'vtx_service_category');
+    // 6.14. Descrição da Categoria DENTRO do Loop de Taxonomia
+    public function sc_loop_desc() {
+        $term_id = get_the_ID();
+        $term = get_term($term_id, 'vtx_service_category');
         return ($term && !is_wp_error($term)) ? wpautop(esc_html($term->description)) : '';
     }
 
-    // 6.15. Traz a Imagem da Categoria DENTRO do Loop de Taxonomia (Elementor Loop Builder)
-    public function sc_loop_capa($atts) {
-        $atts = shortcode_atts(['id' => ''], $atts);
-        if (empty($atts['id'])) return '';
-        
-        $term = get_term(intval($atts['id']), 'vtx_service_category');
+    // 6.15. Imagem da Categoria DENTRO do Loop de Taxonomia
+    public function sc_loop_capa() {
+        $term_id = get_the_ID();
+        $term = get_term($term_id, 'vtx_service_category');
         if ($term && !is_wp_error($term)) {
-            $image_id = get_term_meta($term->term_id, 'vtx_category_image', true);
+            $image_id = get_term_meta($term_id, 'vtx_category_image', true);
             if ($image_id) {
                 $img_url = wp_get_attachment_image_url($image_id, 'large');
                 return '<img src="'.esc_url($img_url).'" alt="' . esc_attr($term->name) . '" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; margin-bottom: 0; display: block;">';
