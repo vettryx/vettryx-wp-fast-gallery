@@ -3,10 +3,11 @@
  * Plugin Name: VETTRYX WP Fast Gallery
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Gerenciador de álbuns de serviços com controle total sobre slugs, capas de categorias e dados de páginas de arquivo.
- * Version:     1.7.0
+ * Version:     1.7.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
- * License:     GPLv3
+ * License:     Proprietária (Uso Comercial Exclusivo)
+ * Vettryx Icon: dashicons-format-gallery
  */
 
 // Segurança: Impede o acesso direto ao arquivo
